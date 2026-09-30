@@ -1,0 +1,6 @@
+{
+  "name": "Sharma Kirana Store - Inventory & Dual-Backend POS",
+  "description": "Upgraded modern inventory management and POS system for Sharma Kirana Store (Delhi, India) with seamless Python Flask and Java Spark backend interoperability.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

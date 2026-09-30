@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Attractive ambient background themes */
+.theme-sandstone {
+  background-color: #F8F5EE;
+  background-image: 
+    radial-gradient(at 12% 15%, rgba(16, 185, 129, 0.09) 0px, transparent 45%),
+    radial-gradient(at 88% 10%, rgba(245, 158, 11, 0.08) 0px, transparent 40%),
+    radial-gradient(at 50% 85%, rgba(13, 148, 136, 0.06) 0px, transparent 55%),
+    radial-gradient(at 80% 80%, rgba(217, 119, 6, 0.05) 0px, transparent 45%);
+  background-attachment: fixed;
+}
+
+.theme-emerald {
+  background-color: #071714;
+  background-image:
+    radial-gradient(at 20% 15%, rgba(16, 185, 129, 0.18) 0px, transparent 50%),
+    radial-gradient(at 85% 25%, rgba(52, 211, 153, 0.12) 0px, transparent 45%),
+    radial-gradient(at 50% 80%, rgba(5, 150, 105, 0.15) 0px, transparent 50%);
+  background-attachment: fixed;
+  color: #F1F5F9;
+}
+
+.theme-warm-terracotta {
+  background-color: #FAF4EF;
+  background-image:
+    radial-gradient(at 10% 10%, rgba(225, 29, 72, 0.06) 0px, transparent 45%),
+    radial-gradient(at 90% 15%, rgba(245, 158, 11, 0.08) 0px, transparent 45%),
+    radial-gradient(at 50% 90%, rgba(16, 185, 129, 0.06) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Subtle organic mesh overlay */
+.bg-mesh-pattern {
+  background-image: radial-gradient(rgba(100, 116, 139, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
