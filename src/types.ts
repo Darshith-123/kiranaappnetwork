@@ -75,39 +75,4 @@ export interface ApiLogEntry {
   headers: Record<string, string>;
 }
 
-export interface CartItem {
-  item: InventoryItem;
-  quantity: number;
-}
-
-export interface BillReceipt {
-  invoiceNumber: string;
-  date: string;
-  customerName: string;
-  customerPhone?: string;
-  paymentMode: 'Cash' | 'UPI / QR' | 'Khata (Credit)';
-  items: CartItem[];
-  subtotal: number;
-  discount: number;
-  tax: number;
-  total: number;
-  backendUsed: BackendType;
-  shopInfo?: ShopInfo;
-  upiString?: string;
-  isPaid?: boolean;
-}
-
-export interface KhataEntry {
-  id: string;
-  customerName: string;
-  customerPhone: string;
-  amount: number;
-  shopId: string;
-  date: string;
-  invoiceNumber: string;
-  status: 'unpaid' | 'settled';
-  settledDate?: string;
-}
-
 export type MultiStoreStockMap = Record<string, Record<number, number>>;
-

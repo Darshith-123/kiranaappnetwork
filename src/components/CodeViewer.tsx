@@ -135,7 +135,7 @@ export const CodeViewer: React.FC = () => {
                 <strong className="text-slate-800">POST /api/items</strong>: Accepts <code className="font-mono">&#123;"name", "price", "stock"&#125;</code>, computes <code className="font-mono">max(id) + 1</code>, and appends to the store.
               </li>
               <li>
-                <strong className="text-slate-800">POST /api/purchase/:id</strong>: Atomically checks if item exists and <code className="font-mono">stock &gt; 0</code>, decrements stock by 1, and saves to file. Returns <code className="font-mono">400 Bad Request</code> if out of stock, <code className="font-mono">404</code> if missing.
+                <strong className="text-slate-800">PUT /api/items/:id/stock</strong>: Atomically updates stock level for an item in the directory. Returns updated item metadata.
               </li>
               <li>
                 <strong className="text-slate-800">GET /api/shopinfo</strong>: Exposes shop metadata (Sharma Kirana Store, Delhi, India).

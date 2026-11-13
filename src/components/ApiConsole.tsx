@@ -37,10 +37,8 @@ export const ApiConsole: React.FC<ApiConsoleProps> = ({
           const body = JSON.parse(testPayload);
           await backendEngine.addItem(body);
         } catch {
-          alert('Invalid JSON in request payload.');
+          // Ignore invalid JSON parse
         }
-      } else if (testEndpoint === 'POST /api/purchase/<id>') {
-        await backendEngine.purchaseItem(testItemId, 1);
       }
     } finally {
       setIsExecuting(false);
@@ -128,27 +126,11 @@ export const ApiConsole: React.FC<ApiConsoleProps> = ({
               onChange={(e) => setTestEndpoint(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
-              <option value="GET /api/items">GET /api/items (Fetch inventory)</option>
-              <option value="GET /api/shopinfo">GET /api/shopinfo (Shop metadata)</option>
-              <option value="POST /api/items">POST /api/items (Add grocery item)</option>
-              <option value="POST /api/purchase/<id>">POST /api/purchase/:id (Buy 1x)</option>
+              <option value="GET /api/items">GET /api/items (Fetch inventory catalog)</option>
+              <option value="GET /api/shopinfo">GET /api/shopinfo (Shop metadata & timings)</option>
+              <option value="POST /api/items">POST /api/items (Add grocery item to catalog)</option>
             </select>
           </div>
-
-          {testEndpoint === 'POST /api/purchase/<id>' && (
-            <div className="md:col-span-3">
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Item ID
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={testItemId}
-                onChange={(e) => setTestItemId(parseInt(e.target.value, 10) || 1)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-          )}
 
           <div className="md:col-span-2">
             <button

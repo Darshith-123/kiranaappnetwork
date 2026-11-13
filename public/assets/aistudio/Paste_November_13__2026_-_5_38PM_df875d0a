@@ -1,0 +1,1307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RetailNet - Hyper-Local Grocery Price Discovery & Store Directory</title>
+  <meta name="description" content="RetailNet helps you compare sample neighborhood grocery prices, build a shopping basket, and contact local stores." />
+  <meta name="theme-color" content="#071714" />
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" />
+  <link rel="preconnect" href="https://unpkg.com" crossorigin />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    }
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .theme-sandstone {
+      background-color: #F8F5EE;
+      background-image:
+        radial-gradient(at 12% 15%, rgba(16, 185, 129, 0.09) 0px, transparent 45%),
+        radial-gradient(at 88% 10%, rgba(245, 158, 11, 0.08) 0px, transparent 40%),
+        radial-gradient(at 50% 85%, rgba(13, 148, 136, 0.06) 0px, transparent 55%);
+      background-attachment: fixed;
+    }
+    .theme-emerald {
+      background-color: #071714;
+      background-image:
+        radial-gradient(at 20% 15%, rgba(16, 185, 129, 0.18) 0px, transparent 50%),
+        radial-gradient(at 85% 25%, rgba(52, 211, 153, 0.12) 0px, transparent 45%);
+      background-attachment: fixed;
+      color: #F1F5F9;
+    }
+    .theme-warm-terracotta {
+      background-color: #FAF4EF;
+      background-image:
+        radial-gradient(at 10% 10%, rgba(225, 29, 72, 0.06) 0px, transparent 45%),
+        radial-gradient(at 90% 15%, rgba(245, 158, 11, 0.08) 0px, transparent 45%);
+      background-attachment: fixed;
+    }
+    :focus-visible {
+      outline: 3px solid #10B981;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body class="theme-sandstone text-[#1E293B] antialiased min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useCallback } = React;
+
+    // --- DATA DEFINITIONS ---
+    const PRESET_LOCATIONS = [
+      { name: "LB Nagar, Saraswathi Nagar, Hyderabad", area: "Saraswathi Nagar", city: "Hyderabad, Telangana", pincode: "500074", coordinates: { lat: 17.3457, lng: 78.5522 } },
+      { name: "Kothapet Fruit Market Rd, Hyderabad", area: "Kothapet", city: "Hyderabad, Telangana", pincode: "500035", coordinates: { lat: 17.3621, lng: 78.5414 } },
+      { name: "Dilsukhnagar Bus Depot Area, Hyderabad", area: "Dilsukhnagar", city: "Hyderabad, Telangana", pincode: "500060", coordinates: { lat: 17.3688, lng: 78.5284 } },
+      { name: "Chandni Chowk Main Bazaar, Delhi", area: "Old Delhi", city: "Delhi, NCR", pincode: "110006", coordinates: { lat: 28.6507, lng: 77.2334 } }
+    ];
+
+    const NEARBY_KIRANA_SHOPS = [
+      {
+        id: "raju_kirana",
+        name: "Raju Kirana Store",
+        distance: "500 m",
+        distanceMeters: 500,
+        address: "H.No 4-12, Saraswathi Nagar Colony Road, LB Nagar, Hyderabad",
+        landmark: "Beside Saraswathi Temple Water Tank",
+        rating: 4.8,
+        reviewsCount: 342,
+        timing: "6:30 AM – 10:30 PM",
+        phone: "+91 98480 23145",
+        owner: "Raju Yadav",
+        gstin: "36AAECR9812K1Z3",
+        specialty: "Lowest prices on Basmati rice, Sona Masoori & sunflower oils",
+        coordinates: { lat: 17.3475, lng: 78.5545 },
+        itemPrices: { 1: 48, 2: 42, 3: 118, 4: 92, 5: 40, 6: 570, 7: 138, 8: 34 }
+      },
+      {
+        id: "sharma_kirana",
+        name: "Sharma Kirana Shop",
+        distance: "750 m",
+        distanceMeters: 750,
+        address: "Plot 88, Near RTC Colony Arch, LB Nagar Main Road, Hyderabad",
+        landmark: "Near LB Nagar Metro Pillar 1405",
+        rating: 4.9,
+        reviewsCount: 512,
+        timing: "7:00 AM – 11:00 PM",
+        phone: "+91 98110 44219",
+        owner: "Ramesh Sharma",
+        gstin: "36AAACS1429B1Z8",
+        specialty: "Famous for unpolished pulses, pure spices & premium grains (Estd. 1994)",
+        coordinates: { lat: 17.3435, lng: 78.5570 },
+        itemPrices: { 1: 50, 2: 40, 3: 120, 4: 95, 5: 42, 6: 580, 7: 140, 8: 35 }
+      },
+      {
+        id: "balaji_kirana",
+        name: "Balaji Super Kirana & General Store",
+        distance: "1.1 km",
+        distanceMeters: 1100,
+        address: "Shop 12-14, Opp LB Nagar Metro Station Pillar 1420, Hyderabad",
+        landmark: "Directly opposite Metro Exit Gate 2",
+        rating: 4.6,
+        reviewsCount: 218,
+        timing: "8:00 AM – 10:30 PM",
+        phone: "+91 99890 56211",
+        owner: "K. Balaji Reddy",
+        gstin: "36ABCPB4450D1Z2",
+        specialty: "Fast express counter, branded FMCG staples & snack packs",
+        coordinates: { lat: 17.3520, lng: 78.5490 },
+        itemPrices: { 1: 52, 2: 41, 3: 124, 4: 98, 5: 44, 6: 590, 7: 142, 8: 36 }
+      },
+      {
+        id: "sri_lakshmi_kirana",
+        name: "Sri Lakshmi Venkateshwara Kirana Merchants",
+        distance: "1.4 km",
+        distanceMeters: 1400,
+        address: "Main Road, Saraswathi Nagar Ext., Near Ramalayam Temple, Hyderabad",
+        landmark: "Ramalayam Temple Junction",
+        rating: 4.7,
+        reviewsCount: 189,
+        timing: "6:00 AM – 9:30 PM",
+        phone: "+91 97011 88320",
+        owner: "V. Lakshmi Narayana",
+        gstin: "36AKLPV7810M1Z7",
+        specialty: "Traditional grain flour chakki, pure farm bilona ghee & raw jaggery",
+        coordinates: { lat: 17.3400, lng: 78.5460 },
+        itemPrices: { 1: 49, 2: 43, 3: 115, 4: 90, 5: 39, 6: 560, 7: 139, 8: 33 }
+      }
+    ];
+
+    const DEFAULT_INVENTORY = [
+      { id: 1, name: "Rice", price: 50, stock: 100, category: "Grains & Atta", unit: "kg", hindiName: "चावल (बासमती / सोना मसूरी)", description: "Premium aged Sona Masoori & Basmati rice, cleaned for daily meals and biryani." },
+      { id: 2, name: "Sugar", price: 40, stock: 50, category: "Daily Essentials", unit: "kg", hindiName: "चीनी (शक्कर)", description: "Fine crystal refined sulfur-free white sugar for sweets, tea and baking." },
+      { id: 3, name: "Oil", price: 120, stock: 30, category: "Oils & Ghee", unit: "Litre", hindiName: "सरसों तेल / सनफ्लावर ऑइल", description: "Cold-pressed pure kachi ghani mustard & refined sunflower cooking oil." },
+      { id: 4, name: "Chana Dal", price: 95, stock: 45, category: "Pulses & Dal", unit: "kg", hindiName: "चना दाल", description: "Unpolished, protein-rich split Bengal gram dal with natural earthy flavor." },
+      { id: 5, name: "Chakki Fresh Atta", price: 42, stock: 80, category: "Grains & Atta", unit: "kg", hindiName: "गेहूं आटा", description: "100% whole wheat stone ground flour for soft, fluffy rotis." },
+      { id: 6, name: "Pure Desi Ghee", price: 580, stock: 15, category: "Oils & Ghee", unit: "kg", hindiName: "शुद्ध देसी घी", description: "Traditional bilona churned A2 cow milk ghee with authentic grainy texture." },
+      { id: 7, name: "Tata Premium Tea", price: 140, stock: 60, category: "Beverages", unit: "pack (250g)", hindiName: "टाटा चाय", description: "Rich blend of strong CTC granules with long tea leaves for kadak chai." },
+      { id: 8, name: "Turmeric Powder (Haldi)", price: 35, stock: 40, category: "Spices & Masala", unit: "pack (200g)", hindiName: "हल्दी पाउडर", description: "High-curcumin Salem turmeric ground fresh without added artificial colors." }
+    ];
+
+    const DEFAULT_STORE_STOCKS = {
+      raju_kirana:        { 1: 85,  2: 40, 3: 25, 4: 35, 5: 90,  6: 12, 7: 50, 8: 30 },
+      sharma_kirana:      { 1: 120, 2: 60, 3: 40, 4: 50, 5: 75,  6: 22, 7: 70, 8: 45 },
+      balaji_kirana:      { 1: 65,  2: 80, 3: 55, 4: 40, 5: 110, 6: 28, 7: 40, 8: 50 },
+      sri_lakshmi_kirana: { 1: 95,  2: 45, 3: 20, 4: 30, 5: 60,  6: 10, 7: 35, 8: 25 }
+    };
+
+    const MAP_POSITIONS = {
+      raju_kirana:        { top: '35%', left: '65%' },
+      sharma_kirana:      { top: '65%', left: '72%' },
+      balaji_kirana:      { top: '22%', left: '32%' },
+      sri_lakshmi_kirana: { top: '78%', left: '26%' }
+    };
+
+    // --- MAIN SINGLE-PAGE APPLICATION ---
+    function App() {
+      const [currentTab, setCurrentTab] = useState(() => {
+        const requestedTab = new URLSearchParams(window.location.search).get('tab');
+        return ['storefront', 'basket', 'compare', 'map', 'directory'].includes(requestedTab)
+          ? requestedTab
+          : 'storefront';
+      });
+      const [appRole, setAppRole] = useState('customer');
+      const [currentTheme, setCurrentTheme] = useState('sandstone');
+      const [activeBackend, setActiveBackend] = useState('python');
+      const [activeShopId, setActiveShopId] = useState(() => {
+        const requestedShop = new URLSearchParams(window.location.search).get('shop');
+        return NEARBY_KIRANA_SHOPS.some(shop => shop.id === requestedShop) ? requestedShop : 'raju_kirana';
+      });
+      const [currentLocation, setCurrentLocation] = useState(PRESET_LOCATIONS[0]);
+
+      const [catalog, setCatalog] = useState(() => {
+        try {
+          const saved = localStorage.getItem('kna_catalog_v1');
+          return saved ? JSON.parse(saved) : DEFAULT_INVENTORY;
+        } catch (error) {
+          console.error('Unable to load the saved RetailNet catalog.', error);
+          return DEFAULT_INVENTORY;
+        }
+      });
+
+      const [storeStocks, setStoreStocks] = useState(() => {
+        try {
+          const saved = localStorage.getItem('kna_stocks_v1');
+          return saved ? JSON.parse(saved) : DEFAULT_STORE_STOCKS;
+        } catch (error) {
+          console.error('Unable to load saved RetailNet stock data.', error);
+          return DEFAULT_STORE_STOCKS;
+        }
+      });
+
+      const [basket, setBasket] = useState(() => {
+        try {
+          const saved = localStorage.getItem('retailnet_basket_v1');
+          const parsed = saved ? JSON.parse(saved) : {};
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (error) {
+          console.error('Unable to load the saved RetailNet basket.', error);
+          return {};
+        }
+      });
+
+      const [logs, setLogs] = useState([]);
+      const [notification, setNotification] = useState(null);
+      const [copiedUrl, setCopiedUrl] = useState(false);
+
+      // Filters & UI states
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedCategory, setSelectedCategory] = useState('All');
+      const [dirFilter, setDirFilter] = useState('all');
+      const [mapMode, setMapMode] = useState('street');
+      const [isEditingLoc, setIsEditingLoc] = useState(false);
+      const [customLocInput, setCustomLocInput] = useState('');
+      const [showAddModal, setShowAddModal] = useState(false);
+      const [newItem, setNewItem] = useState({ name: '', hindiName: '', price: '', stock: '', category: 'Grains & Atta', unit: 'kg' });
+
+      const activeShop = useMemo(
+        () => NEARBY_KIRANA_SHOPS.find(s => s.id === activeShopId) || NEARBY_KIRANA_SHOPS[0],
+        [activeShopId]
+      );
+
+      // Combine catalog items with the selected store's listed prices and stock.
+      const items = useMemo(() => {
+        const shopStockMap = storeStocks[activeShop.id] || {};
+        return catalog.map(item => ({
+          ...item,
+          price: activeShop.itemPrices[item.id] !== undefined ? activeShop.itemPrices[item.id] : item.price,
+          stock: shopStockMap[item.id] !== undefined ? shopStockMap[item.id] : item.stock
+        }));
+      }, [catalog, storeStocks, activeShop]);
+
+      const notify = useCallback((message, type = 'info') => {
+        const id = Date.now();
+        setNotification({ id, message, type });
+        setTimeout(() => setNotification(prev => (prev && prev.id === id ? null : prev)), 3500);
+      }, []);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem('kna_catalog_v1', JSON.stringify(catalog));
+        } catch (error) {
+          console.error('Unable to save the RetailNet catalog.', error);
+          notify('Could not save catalog changes in this browser.', 'error');
+        }
+      }, [catalog, notify]);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem('kna_stocks_v1', JSON.stringify(storeStocks));
+        } catch (error) {
+          console.error('Unable to save RetailNet stock data.', error);
+          notify('Could not save stock changes in this browser.', 'error');
+        }
+      }, [storeStocks, notify]);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem('retailnet_basket_v1', JSON.stringify(basket));
+        } catch (error) {
+          console.error('Unable to save the RetailNet basket.', error);
+          notify('Could not save your basket in this browser.', 'error');
+        }
+      }, [basket, notify]);
+
+      const logApi = (method, endpoint, status, payload, reqPayload = null) => {
+        const entry = {
+          id: Math.random().toString(36).slice(2),
+          timestamp: new Date().toLocaleTimeString(),
+          backend: activeBackend,
+          method,
+          endpoint,
+          status,
+          durationMs: activeBackend === 'python' ? 38 : 16,
+          requestPayload: reqPayload,
+          responsePayload: payload
+        };
+        setLogs(prev => [entry, ...prev.slice(0, 39)]);
+      };
+
+      const handleSelectShop = (shopId) => {
+        setActiveShopId(shopId);
+        const shop = NEARBY_KIRANA_SHOPS.find(s => s.id === shopId);
+        if (shop) {
+          logApi('GET', `/api/shopinfo?shop_id=${shopId}`, 200, { shop_name: shop.name, distance: shop.distance, timing: shop.timing });
+          notify(`Active Store: ${shop.name} (${shop.distance})`);
+        }
+      };
+
+      const handleAddToBasket = (itemId) => {
+        const item = items.find(entry => entry.id === itemId);
+        if (!item || item.stock <= Number(basket[itemId] || 0)) {
+          notify(item ? `No more ${item.name} available at ${activeShop.name}.` : 'This item is no longer available.', 'error');
+          return;
+        }
+        setBasket(prev => ({ ...prev, [itemId]: Number(prev[itemId] || 0) + 1 }));
+        notify(`${item.name} added to your basket.`, 'success');
+      };
+
+      const handleChangeBasketQuantity = (itemId, change) => {
+        const item = items.find(entry => entry.id === itemId);
+        if (!item) {
+          notify('This grocery is no longer in the catalog.', 'error');
+          return;
+        }
+        const nextQuantity = Number(basket[itemId] || 0) + change;
+        if (nextQuantity > item.stock) {
+          notify(`Only ${item.stock} ${item.name} available at ${activeShop.name}.`, 'error');
+          return;
+        }
+        setBasket(prev => {
+          const next = { ...prev };
+          if (nextQuantity <= 0) delete next[itemId];
+          else next[itemId] = nextQuantity;
+          return next;
+        });
+      };
+
+      const handleShare = async () => {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+          notify('Clipboard access is unavailable in this browser.', 'error');
+          return;
+        }
+        const shareUrl = new URL(window.location.href);
+        shareUrl.searchParams.set('tab', ['storefront', 'basket', 'compare', 'map', 'directory'].includes(currentTab) ? currentTab : 'storefront');
+        shareUrl.searchParams.set('shop', activeShop.id);
+        try {
+          await navigator.clipboard.writeText(shareUrl.toString());
+          setCopiedUrl(true);
+          notify('RetailNet link copied to clipboard.', 'success');
+          setTimeout(() => setCopiedUrl(false), 2000);
+        } catch (error) {
+          console.error('Unable to copy the RetailNet share link.', error);
+          notify('Could not copy the link. Check clipboard permissions and try again.', 'error');
+        }
+      };
+
+      const handleDetectGps = () => {
+        if (!navigator.geolocation) {
+          notify('Geolocation not supported in this browser.', 'error');
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            setCurrentLocation({
+              name: `Current GPS (${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E)`,
+              area: 'Live GPS Pinpoint',
+              city: 'Hyderabad, Telangana',
+              pincode: '500074',
+              coordinates: { lat: latitude, lng: longitude }
+            });
+            notify('GPS location updated!', 'success');
+          },
+          () => notify('GPS permission denied. Using LB Nagar, Hyderabad.', 'error')
+        );
+      };
+
+      const handleAddItem = (e) => {
+        e.preventDefault();
+        const priceNum = parseFloat(newItem.price);
+        const stockNum = parseInt(newItem.stock, 10);
+        if (!newItem.name.trim() || !Number.isFinite(priceNum) || priceNum <= 0 || !Number.isInteger(stockNum) || stockNum < 0) {
+          notify('Enter an item name, a price above ₹0, and a whole-number stock quantity.', 'error');
+          return;
+        }
+
+        const nextId = catalog.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1;
+        const created = {
+          id: nextId,
+          name: newItem.name.trim(),
+          hindiName: newItem.hindiName.trim(),
+          price: priceNum,
+          stock: stockNum,
+          category: newItem.category,
+          unit: newItem.unit,
+          description: `Catalog entry added for ${activeShop.name}.`
+        };
+
+        setCatalog(prev => [...prev, created]);
+        setStoreStocks(prev => ({
+          ...prev,
+          [activeShop.id]: { ...(prev[activeShop.id] || {}), [nextId]: stockNum }
+        }));
+        logApi('POST', '/api/items', 201, created, newItem);
+        notify(`Added ${created.name} to catalog!`, 'success');
+        setNewItem({ name: '', hindiName: '', price: '', stock: '', category: 'Grains & Atta', unit: 'kg' });
+        setShowAddModal(false);
+      };
+
+      const handleRestock = (itemId, qty) => {
+        const current = (storeStocks[activeShop.id] && storeStocks[activeShop.id][itemId]) ?? 0;
+        const nextStock = current + qty;
+        setStoreStocks(prev => ({
+          ...prev,
+          [activeShop.id]: { ...(prev[activeShop.id] || {}), [itemId]: nextStock }
+        }));
+        logApi('POST', `/api/items/${itemId}/restock`, 200, { shop_id: activeShop.id, new_stock: nextStock }, { quantity: qty });
+        notify(`Updated stock (+${qty}) for ${activeShop.name}`, 'success');
+      };
+
+      const handleDeleteItem = (itemId) => {
+        const item = catalog.find(entry => entry.id === itemId);
+        if (!item || !window.confirm(`Remove ${item.name} from the catalog?`)) return;
+        setCatalog(prev => prev.filter(i => i.id !== itemId));
+        setBasket(prev => {
+          const next = { ...prev };
+          delete next[itemId];
+          return next;
+        });
+        logApi('DELETE', `/api/items/${itemId}`, 200, { message: 'Removed from directory catalog' });
+        notify('Item removed from catalog');
+      };
+
+      const handleReset = () => {
+        if (!window.confirm('Reset the catalog, store stock, and basket to the sample defaults?')) return;
+        setCatalog(DEFAULT_INVENTORY);
+        setStoreStocks(DEFAULT_STORE_STOCKS);
+        setBasket({});
+        notify('Catalog, stock, and basket reset to sample defaults.');
+      };
+
+      const isDark = currentTheme === 'emerald';
+      const cleanPhone = activeShop.phone.replace(/[^0-9]/g, '');
+      const categories = ['All', 'Grains & Atta', 'Pulses & Dal', 'Oils & Ghee', 'Spices & Masala', 'Beverages', 'Daily Essentials'];
+
+      const filteredItems = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        return items.filter(item => {
+          const matchSearch = item.name.toLowerCase().includes(q) ||
+            (item.hindiName && item.hindiName.toLowerCase().includes(q)) ||
+            (item.category && item.category.toLowerCase().includes(q));
+          const matchCat = selectedCategory === 'All' || item.category === selectedCategory;
+          return matchSearch && matchCat;
+        });
+      }, [items, searchQuery, selectedCategory]);
+
+      const shopTotals = useMemo(() => NEARBY_KIRANA_SHOPS.map(shop => ({
+        shop,
+        total: items.reduce((sum, item) => sum + (shop.itemPrices[item.id] ?? item.price), 0)
+      })), [items]);
+      const basketItems = useMemo(
+        () => items.filter(item => Number(basket[item.id]) > 0),
+        [items, basket]
+      );
+      const basketCount = useMemo(
+        () => basketItems.reduce((sum, item) => sum + Number(basket[item.id]), 0),
+        [basketItems, basket]
+      );
+      const basketTotals = useMemo(() => NEARBY_KIRANA_SHOPS.map(shop => ({
+        shop,
+        total: basketItems.reduce(
+          (sum, item) => sum + (shop.itemPrices[item.id] ?? item.price) * Number(basket[item.id]),
+          0
+        )
+      })), [basketItems, basket]);
+      const cheapestBasket = basketTotals.length
+        ? basketTotals.reduce((best, entry) => entry.total < best.total ? entry : best)
+        : null;
+      const cheapestTotal = shopTotals.reduce((best, entry) => entry.total < best.total ? entry : best);
+
+      const publicTabs = [
+        { id: 'storefront', label: 'Item Catalogs' },
+        { id: 'basket', label: `My Basket${basketCount ? ` (${basketCount})` : ''}` },
+        { id: 'compare', label: 'Compare Prices' },
+        { id: 'map', label: 'Radar Map' },
+        { id: 'directory', label: 'Store Directory' }
+      ];
+      const merchantTabs = [
+        { id: 'inventory', label: 'Catalog Manager' },
+        { id: 'console', label: 'API Simulator' }
+      ];
+      const navTabs = appRole === 'merchant' ? [...publicTabs, ...merchantTabs] : publicTabs;
+
+      return (
+        <div className={`min-h-screen theme-${currentTheme} flex flex-col transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-[#1E293B]'}`}>
+          {/* TOP NAVBAR */}
+          <header className={`sticky top-0 z-40 backdrop-blur-md border-b ${isDark ? 'bg-[#061411]/90 border-emerald-900/50 text-white' : 'bg-white/85 border-amber-900/10 text-slate-900'}`}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <button onClick={() => setCurrentTab('storefront')} className="font-bold text-lg tracking-tight flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-extrabold">RN</span>
+                  <span>RetailNet</span>
+                </button>
+                <span className="hidden lg:inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                  Local Price & Store Directory
+                </span>
+              </div>
+
+              <nav className="hidden xl:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+                {navTabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setCurrentTab(tab.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      currentTab === tab.id ? 'bg-white text-slate-900 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={activeShop.id}
+                  onChange={(e) => handleSelectShop(e.target.value)}
+                  className="hidden lg:block max-w-[190px] text-xs bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 cursor-pointer"
+                >
+                  {NEARBY_KIRANA_SHOPS.map(s => (
+                    <option key={s.id} value={s.id}>{s.name.replace(' Store', '').replace(' Shop', '')} ({s.distance})</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={handleShare}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium"
+                >
+                  {copiedUrl ? 'Copied!' : 'Share'}
+                </button>
+
+                <select
+                  value={currentTheme}
+                  onChange={(e) => setCurrentTheme(e.target.value)}
+                  className="hidden xl:block text-xs bg-slate-100 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700"
+                >
+                  <option value="sandstone">Sandstone</option>
+                  <option value="emerald">Emerald Dark</option>
+                  <option value="warm-terracotta">Terracotta</option>
+                </select>
+
+                <button
+                  onClick={() => {
+                    const next = appRole === 'customer' ? 'merchant' : 'customer';
+                    setAppRole(next);
+                    if (next === 'customer' && ['inventory', 'console'].includes(currentTab)) setCurrentTab('storefront');
+                    notify(next === 'merchant' ? 'Demo merchant tools opened. Access is not protected yet.' : 'Switched to Public Directory Mode');
+                  }}
+                  className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border ${
+                    appRole === 'merchant' ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                >
+                  {appRole === 'merchant' ? 'Merchant tools: ON' : 'Merchant tools'}
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Nav */}
+            <div className="flex xl:hidden overflow-x-auto px-4 py-2 border-t border-slate-200/60 bg-slate-50/80 gap-1 text-xs">
+              {navTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium ${
+                    currentTab === tab.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </header>
+
+          {/* MAIN CONTENT */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
+              <span className="font-bold">Demo data:</span>
+              <span>Store details, prices, reviews, and stock are samples. Confirm information directly with each shop.</span>
+              {appRole === 'merchant' && <strong className="ml-auto text-rose-700">Merchant tools are not access-protected.</strong>}
+            </div>
+            {/* LOCATION PICKER */}
+            {['storefront', 'map', 'directory'].includes(currentTab) && (
+              <section className="bg-white/95 border border-amber-900/10 rounded-2xl p-5 shadow-sm space-y-4 text-slate-900">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Neighborhood discovery</div>
+                    <h2 className="text-xl sm:text-2xl font-bold mt-0.5">Find local stores and compare prices</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Choose an area to browse store listings and compare sample grocery prices. Confirm prices and stock with the shop before visiting.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={handleDetectGps} className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold">
+                      Use Live GPS
+                    </button>
+                    <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs">
+                      <div>
+                        <div className="text-[10px] text-emerald-800 font-medium">Search Area:</div>
+                        <div className="font-bold text-emerald-950 truncate max-w-[200px]">{currentLocation.name}</div>
+                      </div>
+                      <button onClick={() => setIsEditingLoc(!isEditingLoc)} className="text-[11px] text-emerald-700 font-semibold underline">
+                        {isEditingLoc ? 'Close' : 'Change'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  {PRESET_LOCATIONS.map(loc => (
+                    <button
+                      key={loc.name}
+                      onClick={() => { setCurrentLocation(loc); setIsEditingLoc(false); }}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
+                        currentLocation.name === loc.name ? 'bg-emerald-50 border-emerald-600 font-semibold' : 'bg-slate-50 border-slate-200 hover:bg-white'
+                      }`}
+                    >
+                      <div className="truncate">{loc.area}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{loc.city}</div>
+                    </button>
+                  ))}
+                </div>
+
+                {isEditingLoc && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!customLocInput.trim()) return;
+                      setCurrentLocation({
+                        name: customLocInput.trim(),
+                        area: customLocInput.split(',')[0].trim(),
+                        city: 'Hyderabad, Telangana',
+                        pincode: '500074',
+                        coordinates: { lat: 17.3457, lng: 78.5522 }
+                      });
+                      setCustomLocInput('');
+                      setIsEditingLoc(false);
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={customLocInput}
+                      onChange={(e) => setCustomLocInput(e.target.value)}
+                      placeholder="Type colony or landmark (e.g. Kothapet, LB Nagar)..."
+                      className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs"
+                    />
+                    <button type="submit" className="px-4 py-2 bg-emerald-700 text-white text-xs font-semibold rounded-lg">Update</button>
+                  </form>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
+                  <span className="text-slate-500 font-medium">Participating stores:</span>
+                  {NEARBY_KIRANA_SHOPS.map(shop => (
+                    <button
+                      key={shop.id}
+                      onClick={() => handleSelectShop(shop.id)}
+                      className={`px-3 py-1.5 rounded-lg border font-medium flex items-center gap-1.5 ${
+                        activeShop.id === shop.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{shop.name}</span>
+                      <span className={`font-mono text-[11px] px-1.5 rounded ${activeShop.id === shop.id ? 'bg-emerald-400 text-slate-950 font-bold' : 'bg-slate-100 text-emerald-800'}`}>
+                        {shop.distance}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* TAB 1: ITEM CATALOGS (STOREFRONT) */}
+            {currentTab === 'storefront' && (
+              <div className="space-y-6">
+                <div className="bg-slate-900 text-white rounded-2xl p-6 sm:p-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                  <div className="lg:col-span-8 space-y-3">
+                    <div className="text-xs text-emerald-400 font-medium">
+                      {currentLocation.name} · {activeShop.distance} · Sample store listing
+                    </div>
+                    <h1 className="text-2xl sm:text-4xl font-extrabold leading-tight">
+                      Everyday groceries. Clear local prices.
+                    </h1>
+                    <p className="text-slate-300 text-sm max-w-2xl">
+                      Compare listed prices for rice, flour, oils, lentils, spices, and daily essentials. Check availability and contact local shopkeepers directly.
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-2 text-xs">
+                      <span className="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">Compare listed prices</span>
+                      <span className="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">Build a shopping basket</span>
+                      <span className="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">Contact stores directly</span>
+                    </div>
+                  </div>
+                  <div className="lg:col-span-4 bg-slate-800/80 border border-slate-700 rounded-xl p-5 space-y-2 text-xs">
+                    <div className="flex justify-between border-b border-slate-700 pb-2 font-semibold">
+                      <span>Active Store Profile</span>
+                      <span className="text-emerald-400 font-mono">{activeShop.distance}</span>
+                    </div>
+                    <div className="font-bold text-sm">{activeShop.name}</div>
+                    <div className="text-slate-400">{activeShop.address}</div>
+                    <div className="text-slate-300 pt-1 space-y-1">
+                      <div><span className="text-slate-400">Timings:</span> {activeShop.timing}</div>
+                      <div><span className="text-slate-400">Phone:</span> {activeShop.phone}</div>
+                      <div><span className="text-slate-400">Specialty:</span> {activeShop.specialty}</div>
+                    </div>
+                    <div className="pt-2 flex gap-2">
+                      <a href={`tel:${cleanPhone}`} className="flex-1 text-center py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold">Call Store</a>
+                      <button onClick={() => setCurrentTab('compare')} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold">Compare 4 Shops</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search & Categories */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    aria-label="Search grocery catalog"
+                    placeholder="Search items by English or Hindi name (e.g. Rice, Atta, Dal)..."
+                    className="w-full max-w-md px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900"
+                  />
+                  <div className="text-xs text-slate-500">Showing <strong>{filteredItems.length}</strong> of {items.length} items</div>
+                </div>
+
+                <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap ${
+                        selectedCategory === cat ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Product Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {filteredItems.length === 0 ? (
+                    <div className="sm:col-span-2 lg:col-span-4 bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center text-sm text-slate-600">
+                      <div className="font-semibold text-slate-800">No matching groceries</div>
+                      <p className="mt-1">Try another search or choose a different category.</p>
+                      <button
+                        onClick={() => { setSearchQuery(''); setSelectedCategory('All'); }}
+                        className="mt-3 px-3 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold"
+                      >
+                        Clear filters
+                      </button>
+                    </div>
+                  ) : filteredItems.map(item => {
+                    const allPrices = NEARBY_KIRANA_SHOPS.map(s => s.itemPrices[item.id] ?? item.price);
+                    const lowestPrice = Math.min(...allPrices);
+                    const isLowest = item.price === lowestPrice;
+
+                    return (
+                      <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-3 text-slate-900 shadow-sm">
+                        <div>
+                          <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
+                            <span>{item.category}</span>
+                            {isLowest && <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">Lowest in Area</span>}
+                          </div>
+                          <h3 className="text-base font-bold">{item.name}</h3>
+                          {item.hindiName && <p className="text-xs text-slate-500">{item.hindiName}</p>}
+                          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.description}</p>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between">
+                          <div>
+                            <div className="text-[10px] text-slate-400">Rate at {activeShop.name.split(' ')[0]}</div>
+                            <span className="text-xl font-bold font-mono">₹{item.price}</span>
+                            <span className="text-xs text-slate-500"> / {item.unit}</span>
+                          </div>
+                          <div className="text-xs font-mono text-emerald-700 font-semibold">
+                            Stock: {item.stock}
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-50 p-2 rounded-lg text-[10px] grid grid-cols-2 gap-1 font-mono">
+                          {NEARBY_KIRANA_SHOPS.map(s => (
+                            <div key={s.id} className={`flex justify-between p-1 rounded ${s.id === activeShop.id ? 'bg-emerald-100 font-bold text-emerald-900' : 'text-slate-600'}`}>
+                              <span className="truncate">{s.name.split(' ')[0]}:</span>
+                              <span>₹{s.itemPrices[item.id] ?? item.price}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 text-[11px]">
+                          <a
+                            href={`https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(`Hi ${activeShop.name}, is ${item.name} available at ₹${item.price}/${item.unit}?`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="py-2 text-center font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg"
+                          >
+                            WhatsApp
+                          </a>
+                          <button
+                            onClick={() => setCurrentTab('compare')}
+                            className="py-2 font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                          >
+                            Compare
+                          </button>
+                          <button
+                            onClick={() => handleAddToBasket(item.id)}
+                            className="py-2 font-semibold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 rounded-lg"
+                            aria-label={`Add ${item.name} to basket`}
+                          >
+                            Add to list
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: SHOPPING BASKET */}
+            {currentTab === 'basket' && (
+              <section className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 text-slate-900 space-y-5 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Your shopping list</div>
+                    <h2 className="text-xl sm:text-2xl font-bold mt-0.5">Basket price comparison</h2>
+                    <p className="text-xs text-slate-500 mt-1">Prices are sample listings, not live quotes. Confirm stock and final prices with the store. Basket contents stay in this browser.</p>
+                  </div>
+                  {basketCount > 0 && (
+                    <button
+                      onClick={() => setBasket({})}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold"
+                    >
+                      Clear basket
+                    </button>
+                  )}
+                </div>
+
+                {basketItems.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <div className="text-4xl" aria-hidden="true">🛒</div>
+                    <h3 className="mt-3 font-bold">Your basket is empty</h3>
+                    <p className="mt-1 text-sm text-slate-500">Add groceries from the catalog to compare the cost across stores.</p>
+                    <button
+                      onClick={() => setCurrentTab('storefront')}
+                      className="mt-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold"
+                    >
+                      Browse catalog
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="w-full min-w-[640px] text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="py-3 px-4 font-semibold">Item</th>
+                            <th className="py-3 px-4 text-center font-semibold">Quantity</th>
+                            <th className="py-3 px-4 text-right font-semibold">At {activeShop.name.split(' ')[0]}</th>
+                            <th className="py-3 px-4 text-right font-semibold">Line total</th>
+                            <th className="py-3 px-4 text-right font-semibold">Availability</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {basketItems.map(item => {
+                            const quantity = Number(basket[item.id]);
+                            return (
+                              <tr key={item.id}>
+                                <td className="py-3 px-4">
+                                  <div className="font-semibold">{item.name}</div>
+                                  <div className="text-[11px] text-slate-500">per {item.unit}</div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => handleChangeBasketQuantity(item.id, -1)}
+                                      className="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 font-bold"
+                                      aria-label={`Decrease ${item.name} quantity`}
+                                    >−</button>
+                                    <span className="min-w-6 text-center font-mono font-bold">{quantity}</span>
+                                    <button
+                                      onClick={() => handleChangeBasketQuantity(item.id, 1)}
+                                      className="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 font-bold"
+                                      aria-label={`Increase ${item.name} quantity`}
+                                    >+</button>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono">₹{item.price}</td>
+                                <td className="py-3 px-4 text-right font-mono font-bold">₹{item.price * quantity}</td>
+                                <td className="py-3 px-4 text-right">
+                                  <span className={item.stock >= quantity ? 'text-emerald-700' : 'text-rose-600'}>
+                                    {item.stock >= quantity ? `${item.stock} listed` : 'Check with store'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <div className="text-[11px] font-bold text-emerald-800 uppercase tracking-wide">RetailNet savings insight</div>
+                          <div className="mt-1 font-bold text-slate-900">Lowest listed total: {cheapestBasket.shop.name}</div>
+                          <div className="text-xs text-slate-600">Calculated from the quantities in your basket and the sample prices shown.</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-extrabold text-emerald-800">₹{cheapestBasket.total}</div>
+                          <div className="text-[11px] text-emerald-800">Save up to ₹{Math.max(...basketTotals.map(entry => entry.total)) - cheapestBasket.total}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {basketTotals.map(entry => (
+                        <button
+                          key={entry.shop.id}
+                          onClick={() => handleSelectShop(entry.shop.id)}
+                          className={`p-3 rounded-xl border text-left transition-colors ${
+                            entry.shop.id === cheapestBasket.shop.id
+                              ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
+                              : 'border-slate-200 hover:border-slate-400'
+                          }`}
+                        >
+                          <div className="text-xs font-semibold truncate">{entry.shop.name}</div>
+                          <div className="mt-1 text-lg font-bold font-mono">₹{entry.total}</div>
+                          <div className="text-[10px] text-slate-500">{entry.shop.id === cheapestBasket.shop.id ? 'Lowest listed basket total' : 'Select to view this store'}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
+
+            {/* TAB 3: COMPARE PRICES */}
+            {currentTab === 'compare' && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-900 space-y-5 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                  <div>
+                    <div className="text-xs font-semibold text-emerald-700 uppercase">Local price intelligence · {currentLocation.area}</div>
+                    <h2 className="text-xl font-bold mt-0.5">Compare listed grocery prices across stores</h2>
+                  </div>
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
+                    <div className="font-medium text-emerald-800">Lowest all-items total:</div>
+                    <div className="font-bold text-slate-900">{cheapestTotal.shop.name} ({cheapestTotal.shop.distance})</div>
+                    <div className="font-mono text-emerald-800">One of each listed item: <strong>₹{cheapestTotal.total}</strong></div>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500">Sample prices for comparison only. Confirm current prices and stock directly with each store.</p>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="py-3 px-4 font-semibold">Grocery Item</th>
+                        <th className="py-3 px-3 text-center font-semibold">Unit</th>
+                        {NEARBY_KIRANA_SHOPS.map(shop => (
+                          <th
+                            key={shop.id}
+                            onClick={() => handleSelectShop(shop.id)}
+                            className={`py-3 px-4 text-center cursor-pointer ${activeShop.id === shop.id ? 'bg-emerald-100/60 font-bold' : 'hover:bg-slate-100'}`}
+                          >
+                            <div>{shop.name.replace(' Store', '').replace(' Shop', '')}</div>
+                            <div className="text-[10px] text-slate-500 font-normal">{shop.distance} · ★ {shop.rating}</div>
+                          </th>
+                        ))}
+                        <th className="py-3 px-4 text-center font-semibold">Lowest Store</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {items.map(item => {
+                        const prices = NEARBY_KIRANA_SHOPS.map(s => s.itemPrices[item.id] ?? item.price);
+                        const minP = Math.min(...prices);
+                        const winners = NEARBY_KIRANA_SHOPS.filter((_, i) => prices[i] === minP).map(s => s.name.split(' ')[0]).join(', ');
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50">
+                            <td className="py-3 px-4">
+                              <div className="font-semibold">{item.name}</div>
+                              {item.hindiName && <div className="text-[11px] text-slate-500">{item.hindiName}</div>}
+                            </td>
+                            <td className="py-3 px-3 text-center font-mono text-slate-500">/{item.unit}</td>
+                            {NEARBY_KIRANA_SHOPS.map(shop => {
+                              const p = shop.itemPrices[item.id] ?? item.price;
+                              const isMin = p === minP;
+                              return (
+                                <td key={shop.id} onClick={() => handleSelectShop(shop.id)} className={`py-3 px-4 text-center font-mono cursor-pointer ${activeShop.id === shop.id ? 'bg-emerald-50/50 font-bold' : ''}`}>
+                                  <span className={isMin ? 'text-emerald-700 font-bold text-sm' : ''}>₹{p}</span>
+                                </td>
+                              );
+                            })}
+                            <td className="py-3 px-4 text-center">
+                              <span className="bg-slate-100 px-2 py-0.5 rounded font-medium">{winners} (₹{minP})</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
+                        <td colSpan="2" className="py-3.5 px-4 text-sm">One of each listed item</td>
+                        {shopTotals.map(entry => (
+                          <td key={entry.shop.id} className="py-3.5 px-4 text-center font-mono text-sm">
+                            <span className={entry.shop.id === cheapestTotal.shop.id ? 'text-emerald-700 font-bold' : ''}>₹{entry.total}</span>
+                          </td>
+                        ))}
+                        <td className="py-3.5 px-4 text-center text-emerald-700">
+                          Save ₹{Math.max(...shopTotals.map(t => t.total)) - Math.min(...shopTotals.map(t => t.total))}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: RADAR MAP */}
+            {currentTab === 'map' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-slate-900">
+                <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="p-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
+                    <span className="font-semibold">Illustrative store map · {currentLocation.area}</span>
+                    <div className="flex gap-1 bg-white border border-slate-200 rounded-lg p-0.5">
+                      <button onClick={() => setMapMode('street')} className={`px-2 py-0.5 rounded ${mapMode === 'street' ? 'bg-slate-900 text-white' : ''}`}>Light</button>
+                      <button onClick={() => setMapMode('satellite')} className={`px-2 py-0.5 rounded ${mapMode === 'satellite' ? 'bg-slate-900 text-white' : ''}`}>Dark</button>
+                    </div>
+                  </div>
+                  <div className={`relative w-full aspect-[16/10] overflow-hidden ${mapMode === 'street' ? 'bg-[#E5E3DF]' : 'bg-[#15252B]'}`}>
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                      <circle cx="50%" cy="50%" r="22%" fill="none" stroke="#94A3B8" strokeDasharray="4 4" opacity="0.6" />
+                      <circle cx="50%" cy="50%" r="42%" fill="none" stroke="#94A3B8" strokeDasharray="4 4" opacity="0.4" />
+                      <path d="M -10,180 Q 200,160 550,260 T 900,320" stroke={mapMode === 'street' ? '#FFF' : '#384B52'} strokeWidth="12" fill="none" />
+                      <path d="M 280,-10 L 320,600" stroke={mapMode === 'street' ? '#FFF' : '#2D3E45'} strokeWidth="8" fill="none" />
+                      {MAP_POSITIONS[activeShop.id] && (
+                        <line x1="50%" y1="50%" x2={MAP_POSITIONS[activeShop.id].left} y2={MAP_POSITIONS[activeShop.id].top} stroke="#059669" strokeWidth="2.5" strokeDasharray="5 3" />
+                      )}
+                    </svg>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+                      <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-md"></div>
+                      <span className="mt-1 bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded-full">You ({currentLocation.area})</span>
+                    </div>
+                    {NEARBY_KIRANA_SHOPS.map(shop => {
+                      const pos = MAP_POSITIONS[shop.id];
+                      const isActive = activeShop.id === shop.id;
+                      return (
+                        <button
+                          key={shop.id}
+                          onClick={() => handleSelectShop(shop.id)}
+                          style={{ top: pos.top, left: pos.left }}
+                          className={`absolute -translate-x-1/2 -translate-y-full z-30 px-2 py-1 rounded-lg text-xs font-bold shadow-lg whitespace-nowrap ${
+                            isActive ? 'bg-slate-950 text-white border-2 border-emerald-400 scale-110' : 'bg-white text-slate-900 border border-slate-300'
+                          }`}
+                        >
+                          {shop.name.split(' ')[0]} · {shop.distance}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="lg:col-span-5 space-y-2.5">
+                  {NEARBY_KIRANA_SHOPS.map(shop => (
+                    <div
+                      key={shop.id}
+                      onClick={() => handleSelectShop(shop.id)}
+                      className={`p-4 rounded-xl border cursor-pointer bg-white ${activeShop.id === shop.id ? 'border-emerald-600 ring-1 ring-emerald-600' : 'border-slate-200'}`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-bold text-sm">{shop.name}</h4>
+                          <p className="text-[11px] text-slate-500">{shop.landmark}</p>
+                        </div>
+                        <span className="bg-slate-900 text-emerald-400 font-mono text-xs font-bold px-2 py-0.5 rounded">{shop.distance}</span>
+                      </div>
+                      <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs font-mono">
+                        <div className="bg-slate-50 p-1.5 rounded">Rice: ₹{shop.itemPrices[1]}</div>
+                        <div className="bg-slate-50 p-1.5 rounded">Sugar: ₹{shop.itemPrices[2]}</div>
+                        <div className="bg-slate-50 p-1.5 rounded">Oil: ₹{shop.itemPrices[3]}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: STORE DIRECTORY */}
+            {currentTab === 'directory' && (
+              <div className="space-y-5 text-slate-900">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-semibold text-emerald-700 uppercase">Store directory · Sample listings · {currentLocation.area}</div>
+                    <h2 className="text-xl font-bold mt-1">Nearby Kirana Stores, Owners & Contact Information</h2>
+                    <p className="text-xs text-slate-500 mt-1">Browse sample hours, contact details, addresses, and specialties. Confirm information with each store before visiting.</p>
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                    {['all', 'nearest', 'top-rated'].map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => setDirFilter(tag)}
+                        className={`px-3 py-1.5 rounded-lg font-medium ${dirFilter === tag ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-700'}`}
+                      >
+                        {tag === 'all' ? 'All Stores' : tag === 'nearest' ? 'Under 800m' : '4.8+ Rated'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {NEARBY_KIRANA_SHOPS.filter(s => dirFilter === 'nearest' ? s.distanceMeters <= 800 : dirFilter === 'top-rated' ? s.rating >= 4.8 : true).map(shop => {
+                    const phoneNum = shop.phone.replace(/[^0-9]/g, '');
+                    return (
+                      <div key={shop.id} className={`bg-white rounded-2xl border p-6 space-y-4 shadow-sm ${activeShop.id === shop.id ? 'border-emerald-600 ring-2 ring-emerald-600/15' : 'border-slate-200'}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-bold text-base">{shop.name}</h3>
+                            <p className="text-xs text-slate-500">Proprietor: <strong className="text-slate-700">{shop.owner}</strong></p>
+                          </div>
+                          <div className="text-right">
+                            <span className="bg-slate-900 text-white font-mono text-xs font-bold px-2.5 py-1 rounded-lg">{shop.distance}</span>
+                            <div className="text-xs text-amber-600 font-semibold mt-1">★ {shop.rating} ({shop.reviewsCount})</div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="text-[10px] text-slate-400 block">Timings</span>
+                            <span className="font-medium">{shop.timing}</span>
+                          </div>
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="text-[10px] text-slate-400 block">Landmark</span>
+                            <span className="font-medium">{shop.landmark}</span>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-slate-600"><strong>Address:</strong> {shop.address}</p>
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+                          <strong>Specialty:</strong> {shop.specialty}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 text-[11px]">
+                          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md font-medium">Walk-in Physical Store</span>
+                          <span className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-md font-mono">GSTIN: {shop.gstin}</span>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex gap-2">
+                            <a href={`tel:${phoneNum}`} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold">Call Store</a>
+                            <a href={`https://wa.me/91${phoneNum.slice(-10)}`} target="_blank" rel="noreferrer" className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold">WhatsApp</a>
+                            <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(shop.name + ', ' + shop.address)}`} target="_blank" rel="noreferrer" className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium">Directions</a>
+                          </div>
+                          <button
+                            onClick={() => { handleSelectShop(shop.id); setCurrentTab('storefront'); }}
+                            className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-xl"
+                          >
+                            View Catalog &rarr;
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: MERCHANT CATALOG MANAGER */}
+            {currentTab === 'inventory' && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-900 space-y-5 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold">Catalog & Stock Ledger ({activeShop.name})</h2>
+                    <p className="text-xs text-slate-500">Owner: {activeShop.owner} · Demo feed selection: {activeBackend === 'python' ? 'Python-style' : 'Java-style'}</p>
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                    <button onClick={() => setShowAddModal(true)} className="px-3.5 py-2 bg-emerald-700 text-white font-semibold rounded-lg">+ Add Item</button>
+                    <button onClick={handleReset} className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg">Reset Defaults</button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                        <th className="py-3 px-4">ID</th>
+                        <th className="py-3 px-4">Item Name</th>
+                        <th className="py-3 px-4">Category</th>
+                        <th className="py-3 px-4 text-right">Price</th>
+                        <th className="py-3 px-4 text-right">Stock</th>
+                        <th className="py-3 px-4 text-center">Quick Restock</th>
+                        <th className="py-3 px-4 text-right">Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {items.map(item => (
+                        <tr key={item.id} className="hover:bg-slate-50">
+                          <td className="py-3 px-4 font-mono text-slate-500">#{item.id}</td>
+                          <td className="py-3 px-4 font-semibold">{item.name}</td>
+                          <td className="py-3 px-4 text-slate-500">{item.category}</td>
+                          <td className="py-3 px-4 text-right font-mono font-semibold">₹{item.price}/{item.unit}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">{item.stock} {item.unit}</td>
+                          <td className="py-3 px-4 text-center space-x-1">
+                            {[10, 25, 50].map(q => (
+                              <button key={q} onClick={() => handleRestock(item.id, q)} className="px-2 py-1 bg-slate-100 hover:bg-emerald-100 rounded font-mono">+{q}</button>
+                            ))}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button onClick={() => handleDeleteItem(item.id)} className="text-rose-600 hover:underline font-medium">Remove</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 6: API FEEDS CONSOLE */}
+            {currentTab === 'console' && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-900 space-y-5 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold">API Activity Simulator</h2>
+                    <p className="text-xs text-slate-500">Example request logs only. No live API backend is connected in this single-page demo.</p>
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                    <button onClick={() => { setActiveBackend('python'); notify('Switched to Python Flask :5000'); }} className={`px-3 py-1.5 rounded-lg font-semibold ${activeBackend === 'python' ? 'bg-emerald-700 text-white' : 'bg-slate-100'}`}>Python Flask :5000</button>
+                    <button onClick={() => { setActiveBackend('java'); notify('Switched to Java Spark :8081'); }} className={`px-3 py-1.5 rounded-lg font-semibold ${activeBackend === 'java' ? 'bg-amber-600 text-white' : 'bg-slate-100'}`}>Java Spark :8081</button>
+                    <button onClick={() => setLogs([])} className="px-3 py-1.5 bg-slate-100 rounded-lg">Clear</button>
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {logs.length === 0 ? (
+                    <div className="py-10 text-center text-xs text-slate-400">Interact with stores or catalog items to see simulated request logs.</div>
+                  ) : logs.map(l => (
+                    <div key={l.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono">
+                      <div className="flex justify-between">
+                        <span><strong className="text-emerald-700">{l.method}</strong> {l.endpoint}</span>
+                        <span className="text-slate-500">{l.status} · {l.durationMs}ms · {l.backend.toUpperCase()}</span>
+                      </div>
+                      <pre className="mt-2 p-2 bg-slate-900 text-emerald-400 rounded-lg overflow-x-auto text-[11px]">{JSON.stringify(l.responsePayload, null, 2)}</pre>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* ADD ITEM MODAL */}
+          {showAddModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+              <form onSubmit={handleAddItem} className="bg-white rounded-xl max-w-md w-full p-6 space-y-3 text-xs text-slate-900 shadow-xl">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <h3 className="text-base font-bold">Add Catalog Item</h3>
+                  <button type="button" onClick={() => setShowAddModal(false)} className="text-slate-400 font-bold">✕</button>
+                </div>
+                <input required placeholder="Item Name (e.g. Toor Dal)" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+                <input placeholder="Hindi Name (Optional)" value={newItem.hindiName} onChange={e => setNewItem({ ...newItem, hindiName: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input required type="number" min="1" placeholder="Price (₹)" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+                  <input required type="number" min="0" placeholder="Stock Qty" value={newItem.stock} onChange={e => setNewItem({ ...newItem, stock: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={newItem.category} onChange={e => setNewItem({ ...newItem, category: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-white">
+                    {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <select value={newItem.unit} onChange={e => setNewItem({ ...newItem, unit: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-white">
+                    <option value="kg">kg</option>
+                    <option value="Litre">Litre</option>
+                    <option value="pack">pack</option>
+                    <option value="piece">piece</option>
+                  </select>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-3 py-2 text-slate-600">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-emerald-700 text-white font-semibold rounded-lg">Save Item</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* TOAST NOTIFICATION */}
+          {notification && (
+            <div
+              role={notification.type === 'error' ? 'alert' : 'status'}
+              aria-live={notification.type === 'error' ? 'assertive' : 'polite'}
+              className={`fixed bottom-5 right-5 z-50 text-white px-4 py-3 rounded-xl shadow-lg text-xs border ${
+                notification.type === 'error'
+                  ? 'bg-rose-700 border-rose-600'
+                  : notification.type === 'success'
+                    ? 'bg-emerald-800 border-emerald-700'
+                    : 'bg-slate-900 border-slate-700'
+              }`}
+            >
+              {notification.message}
+            </div>
+          )}
+
+          {/* FOOTER */}
+          <footer className={`mt-auto border-t py-5 text-xs ${isDark ? 'bg-[#061411]/90 border-emerald-900/40 text-emerald-200/70' : 'bg-white/80 border-amber-900/10 text-slate-500'}`}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-2">
+              <div><strong className={isDark ? 'text-white' : 'text-slate-800'}>RetailNet</strong> · {activeShop.name} ({activeShop.distance}) · {currentLocation.area}</div>
+              <div>Retail directory · Sample listings · Price comparison</div>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

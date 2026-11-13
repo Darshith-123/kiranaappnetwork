@@ -1,14 +1,13 @@
 import React from 'react';
 import { InventoryItem, KiranaShop } from '../types';
-import { Check, Star, Zap, ShoppingCart, Sparkles, TrendingDown } from 'lucide-react';
+import { Star, Sparkles, TrendingDown, ArrowRight, Store, ExternalLink } from 'lucide-react';
 
 interface PriceComparisonTableProps {
   items: InventoryItem[];
   shops: KiranaShop[];
   activeShop: KiranaShop;
   onSelectShop: (shopId: string) => void;
-  onAddToCart: (item: InventoryItem) => void;
-  onQuickBuy: (itemId: number) => void;
+  onViewStorefront: (shopId: string) => void;
 }
 
 export const PriceComparisonTable: React.FC<PriceComparisonTableProps> = ({
@@ -16,8 +15,7 @@ export const PriceComparisonTable: React.FC<PriceComparisonTableProps> = ({
   shops,
   activeShop,
   onSelectShop,
-  onAddToCart,
-  onQuickBuy,
+  onViewStorefront,
 }) => {
   // Compute total basket price for each shop
   const shopTotals = shops.map((shop) => {
@@ -37,18 +35,18 @@ export const PriceComparisonTable: React.FC<PriceComparisonTableProps> = ({
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 tracking-wide uppercase">
             <TrendingDown className="w-3.5 h-3.5" />
-            <span>Price Comparison Engine · Hyderabad LB Nagar</span>
+            <span>Real-Time Price Intelligence · Hyderabad LB Nagar</span>
           </div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
-            Compare Grocery Item Prices Across All 4 Nearby Kirana Stores
+            Compare Grocery Item Rates Across All 4 Nearby Kirana Stores
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Click any column header to activate that shop. Prices update dynamically for individual items, POS billing, and cash memos.
+            Transparent price matrix for everyday kitchen essentials. Click any store column to set it as your active store.
           </p>
         </div>
 
         {/* Basket value summary */}
-        <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-xl text-xs space-y-1">
+        <div className="p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-xl text-xs space-y-1">
           <div className="text-[11px] font-medium text-emerald-800 flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
             <span>Best Full-Basket Deal:</span>
@@ -79,50 +77,50 @@ export const PriceComparisonTable: React.FC<PriceComparisonTableProps> = ({
                   <th
                     key={shop.id}
                     onClick={() => onSelectShop(shop.id)}
-                    className={`py-3 px-4 font-semibold text-center cursor-pointer transition-colors whitespace-nowrap select-none ${
+                    className={`py-3 px-4 text-center cursor-pointer transition-colors ${
                       isActive
-                        ? 'bg-emerald-100/70 text-emerald-950 font-bold border-x-2 border-emerald-600'
-                        : 'hover:bg-slate-100 text-slate-800'
+                        ? 'bg-emerald-100/60 text-emerald-950 font-bold border-x-2 border-emerald-600'
+                        : 'hover:bg-slate-100/60'
                     }`}
                   >
                     <div className="flex flex-col items-center">
-                      <div className="flex items-center gap-1">
-                        <span>{shop.name}</span>
-                        {isActive && <Check className="w-3.5 h-3.5 text-emerald-700" />}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-normal mt-0.5 font-mono">
-                        <span className="font-bold text-emerald-700">{shop.distance}</span>
-                        <span>·</span>
-                        <span>{shop.rating} ★</span>
-                      </div>
+                      <span className="text-xs font-bold">{shop.name.replace(' Store', '').replace(' Shop', '')}</span>
+                      <span className="text-[10px] text-slate-500 font-normal mt-0.5">
+                        {shop.distance} · ⭐ {shop.rating}
+                      </span>
+                      {isActive && (
+                        <span className="mt-1 px-1.5 py-0.5 bg-emerald-700 text-white rounded text-[9px] uppercase tracking-wider font-semibold">
+                          Active Store
+                        </span>
+                      )}
                     </div>
                   </th>
                 );
               })}
-              <th className="py-3 px-4 font-semibold text-center whitespace-nowrap">
-                Cheapest At
+              <th className="py-3 px-4 font-semibold text-center whitespace-nowrap min-w-[140px]">
+                Lowest Price Store
               </th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-slate-100">
             {items.map((item) => {
-              // Find min price for this item across all 4 shops
-              const prices = shops.map((s) => ({
-                shop: s,
-                price: s.itemPrices[item.id] !== undefined ? s.itemPrices[item.id] : item.price,
-              }));
-              const minPrice = Math.min(...prices.map((p) => p.price));
-              const cheapestShops = prices.filter((p) => p.price === minPrice);
+              // Calculate minimum price among all 4 shops
+              const prices = shops.map((s) => (s.itemPrices[item.id] !== undefined ? s.itemPrices[item.id] : item.price));
+              const minPrice = Math.min(...prices);
+              const cheapestShops = shops
+                .map((s, idx) => ({ shop: s, price: prices[idx] }))
+                .filter((p) => p.price === minPrice);
 
               return (
-                <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                  {/* Item info */}
-                  <td className="py-3.5 px-4 font-medium text-slate-900">
-                    <div className="font-semibold">{item.name}</div>
+                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                  {/* Item Name & Details */}
+                  <td className="py-3.5 px-4">
+                    <div className="font-semibold text-slate-900">{item.name}</div>
                     {item.hindiName && (
-                      <div className="text-[11px] text-slate-500">{item.hindiName}</div>
+                      <div className="text-[11px] text-slate-500 font-medium">{item.hindiName}</div>
                     )}
+                    <div className="text-[10px] text-slate-400 mt-0.5">{item.category}</div>
                   </td>
 
                   {/* Unit */}
@@ -173,7 +171,7 @@ export const PriceComparisonTable: React.FC<PriceComparisonTableProps> = ({
             {/* Total Row */}
             <tr className="bg-slate-50/90 font-bold border-t-2 border-slate-200">
               <td colSpan={2} className="py-4 px-4 text-slate-900 text-sm">
-                Full Basket Total (All 8 Staples)
+                Full Basket Total (All {items.length} Staples)
               </td>
               {shops.map((shop) => {
                 const totalEntry = shopTotals.find((t) => t.shop.id === shop.id)!;
@@ -201,12 +199,27 @@ export const PriceComparisonTable: React.FC<PriceComparisonTableProps> = ({
                   </td>
                 );
               })}
-              <td className="py-4 px-4 text-center text-xs text-slate-500">
+              <td className="py-4 px-4 text-center text-xs text-slate-600 font-semibold">
                 Save up to ₹{Math.max(...shopTotals.map(t => t.total)) - Math.min(...shopTotals.map(t => t.total))}
               </td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      {/* Footer Navigation to Store Directory */}
+      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-slate-600">
+          <Store className="w-4 h-4 text-emerald-600" />
+          <span>Want to view contact numbers and operating hours for each store?</span>
+        </div>
+        <button
+          onClick={() => onViewStorefront(activeShop.id)}
+          className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors flex items-center gap-1.5"
+        >
+          <span>View {activeShop.name} Catalog</span>
+          <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
+        </button>
       </div>
     </div>
   );

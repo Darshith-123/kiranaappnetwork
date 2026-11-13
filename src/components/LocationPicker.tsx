@@ -105,7 +105,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 px-3.5 py-2 rounded-xl text-xs">
             <Navigation className={`w-4 h-4 text-emerald-600 shrink-0 ${currentLocation.isGps ? 'animate-bounce' : 'animate-pulse'}`} />
             <div>
-              <div className="text-[10px] text-emerald-800/80 font-medium">Deliver / Pickup Near:</div>
+              <div className="text-[10px] text-emerald-800/80 font-medium">Search Area Near:</div>
               <div className="font-bold text-emerald-950 truncate max-w-[200px] sm:max-w-[220px]">
                 {currentLocation.name}
               </div>

@@ -1,4 +1,4 @@
-import { BackendType, InventoryItem, ShopInfo, ApiLogEntry, KiranaShop, KhataEntry, MultiStoreStockMap } from '../types';
+import { BackendType, InventoryItem, ShopInfo, ApiLogEntry, KiranaShop, MultiStoreStockMap } from '../types';
 import { NEARBY_KIRANA_SHOPS } from '../data/shopsData';
 
 export const SHOP_INFO: ShopInfo = {
@@ -136,7 +136,7 @@ export const DEFAULT_STORE_STOCKS: MultiStoreStockMap = {
     7: 70,  // Tea: 70 packs
     8: 45   // Haldi: 45 packs
   },
-  balaji_super: {
+  balaji_kirana: {
     1: 65,  // Rice: 65 kg
     2: 80,  // Sugar: 80 kg
     3: 55,  // Oil: 55 Litres
@@ -146,7 +146,7 @@ export const DEFAULT_STORE_STOCKS: MultiStoreStockMap = {
     7: 40,  // Tea: 40 packs
     8: 50   // Haldi: 50 packs
   },
-  sri_lakshmi: {
+  sri_lakshmi_kirana: {
     1: 95,  // Rice: 95 kg
     2: 45,  // Sugar: 45 kg
     3: 20,  // Oil: 20 Litres
@@ -160,7 +160,6 @@ export const DEFAULT_STORE_STOCKS: MultiStoreStockMap = {
 
 const STORAGE_CATALOG_KEY = 'sharma_kirana_catalog';
 const STORAGE_STORE_STOCKS_KEY = 'kirana_multi_store_stocks';
-const STORAGE_KHATA_KEY = 'kirana_digital_khata_ledger';
 const BACKEND_STORAGE_KEY = 'sharma_kirana_backend';
 const ACTIVE_SHOP_KEY = 'kirana_active_shop_id';
 
@@ -170,7 +169,6 @@ class DualBackendEngine {
   private logs: ApiLogEntry[] = [];
   private logSubscribers: Array<(logs: ApiLogEntry[]) => void> = [];
   private inventorySubscribers: Array<(items: InventoryItem[]) => void> = [];
-  private isTransactionLocked: boolean = false;
 
   constructor() {
     const savedBackend = localStorage.getItem(BACKEND_STORAGE_KEY);
@@ -188,32 +186,6 @@ class DualBackendEngine {
     // Initialize multi-store stocks if missing
     if (!localStorage.getItem(STORAGE_STORE_STOCKS_KEY)) {
       localStorage.setItem(STORAGE_STORE_STOCKS_KEY, JSON.stringify(DEFAULT_STORE_STOCKS, null, 2));
-    }
-    // Initialize sample Khata ledger if missing
-    if (!localStorage.getItem(STORAGE_KHATA_KEY)) {
-      const initialKhata: KhataEntry[] = [
-        {
-          id: 'khata-1',
-          customerName: 'Srinivas Rao',
-          customerPhone: '+91 98480 11234',
-          amount: 640,
-          shopId: 'raju_kirana',
-          date: '2026-09-28',
-          invoiceNumber: 'INV-2026-0812',
-          status: 'unpaid'
-        },
-        {
-          id: 'khata-2',
-          customerName: 'Anitha Reddy',
-          customerPhone: '+91 97000 88451',
-          amount: 420,
-          shopId: 'raju_kirana',
-          date: '2026-09-29',
-          invoiceNumber: 'INV-2026-0845',
-          status: 'unpaid'
-        }
-      ];
-      localStorage.setItem(STORAGE_KHATA_KEY, JSON.stringify(initialKhata, null, 2));
     }
   }
 
@@ -514,99 +486,6 @@ class DualBackendEngine {
     return { success: true, item: newItem, status: 201 };
   }
 
-  // POST /api/purchase/:id (With ACID Concurrency Lock and Multi-Store Stock Isolation)
-  public async purchaseItem(itemId: number, count: number = 1): Promise<{ success: boolean; message?: string; error?: string; status: number }> {
-    // Acquire Transaction Lock
-    while (this.isTransactionLocked) {
-      await new Promise(r => setTimeout(r, 10));
-    }
-    this.isTransactionLocked = true;
-
-    try {
-      const start = performance.now();
-      const delay = this.currentBackend === 'python' ? 50 : 22;
-      await new Promise(r => setTimeout(r, delay));
-
-      const inventory = this.loadInventory(this.activeShopId);
-      const targetItem = inventory.find(i => i.id === itemId);
-
-      if (!targetItem) {
-        const duration = Math.round(performance.now() - start);
-        const errRes = { error: "Item not found in store catalog" };
-        this.recordLog({
-          id: crypto.randomUUID(),
-          timestamp: new Date().toISOString(),
-          backend: this.currentBackend,
-          method: 'POST',
-          endpoint: `/api/purchase/${itemId}`,
-          status: 404,
-          statusText: 'NOT FOUND',
-          durationMs: duration,
-          responsePayload: errRes,
-          headers: this.getHeaders(this.currentBackend)
-        });
-        return { success: false, error: "Item not found", status: 404 };
-      }
-
-      if (targetItem.stock < count) {
-        const duration = Math.round(performance.now() - start);
-        const errRes = { error: `Insufficient stock at ${this.getActiveShop().name}. Only ${targetItem.stock} ${targetItem.unit || 'units'} available.` };
-        this.recordLog({
-          id: crypto.randomUUID(),
-          timestamp: new Date().toISOString(),
-          backend: this.currentBackend,
-          method: 'POST',
-          endpoint: `/api/purchase/${itemId}`,
-          status: 400,
-          statusText: 'BAD REQUEST',
-          durationMs: duration,
-          responsePayload: errRes,
-          headers: this.getHeaders(this.currentBackend)
-        });
-        return { success: false, error: errRes.error, status: 400 };
-      }
-
-      // Decrement stock ONLY for the active store in multi-store stocks
-      const allStocks = this.getMultiStoreStocks();
-      if (!allStocks[this.activeShopId]) {
-        allStocks[this.activeShopId] = {};
-      }
-      const previousStock = allStocks[this.activeShopId][itemId] ?? targetItem.stock;
-      const newStock = previousStock - count;
-      allStocks[this.activeShopId][itemId] = newStock;
-      this.saveMultiStoreStocks(allStocks);
-      this.notifyInventory();
-
-      const duration = Math.round(performance.now() - start);
-      const shop = this.getActiveShop();
-      const successRes = {
-        message: `Purchased ${count} ${targetItem.unit || ''} of ${targetItem.name} from ${shop.name} at ₹${targetItem.price}/${targetItem.unit}. Remaining stock: ${newStock}.`,
-        transaction_id: `TXN-${Date.now().toString(36).toUpperCase()}`,
-        shop_id: shop.id,
-        item_id: itemId,
-        stock_remaining: newStock
-      };
-
-      this.recordLog({
-        id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-        backend: this.currentBackend,
-        method: 'POST',
-        endpoint: `/api/purchase/${itemId}`,
-        status: 200,
-        statusText: 'OK',
-        durationMs: duration,
-        responsePayload: successRes,
-        headers: this.getHeaders(this.currentBackend)
-      });
-
-      return { success: true, message: successRes.message, status: 200 };
-    } finally {
-      // Release Transaction Lock
-      this.isTransactionLocked = false;
-    }
-  }
-
   // Quick Restock helper (Specific to Active Shop)
   public async restockItem(itemId: number, addQuantity: number): Promise<boolean> {
     const inventory = this.loadInventory(this.activeShopId);
@@ -671,74 +550,6 @@ class DualBackendEngine {
       statusText: 'OK',
       durationMs: 25,
       responsePayload: { message: "Item deleted from catalog and all shop inventories" },
-      headers: this.getHeaders(this.currentBackend)
-    });
-
-    return true;
-  }
-
-  // Digital Khata Ledger Operations
-  public getKhataEntries(shopId?: string): KhataEntry[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KHATA_KEY);
-      if (data) {
-        const list: KhataEntry[] = JSON.parse(data);
-        if (shopId) {
-          return list.filter(k => k.shopId === shopId);
-        }
-        return list;
-      }
-    } catch {}
-    return [];
-  }
-
-  public addKhataEntry(entry: Omit<KhataEntry, 'id' | 'status' | 'date'>): KhataEntry {
-    const list = this.getKhataEntries();
-    const newEntry: KhataEntry = {
-      ...entry,
-      id: `khata-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
-      status: 'unpaid'
-    };
-    list.unshift(newEntry);
-    localStorage.setItem(STORAGE_KHATA_KEY, JSON.stringify(list, null, 2));
-
-    this.recordLog({
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      backend: this.currentBackend,
-      method: 'POST',
-      endpoint: '/api/khata',
-      status: 201,
-      statusText: 'CREATED',
-      durationMs: 20,
-      requestPayload: newEntry,
-      responsePayload: { message: `Customer credit recorded: ₹${newEntry.amount} for ${newEntry.customerName}` },
-      headers: this.getHeaders(this.currentBackend)
-    });
-
-    return newEntry;
-  }
-
-  public settleKhataEntry(entryId: string): boolean {
-    const list = this.getKhataEntries();
-    const target = list.find(k => k.id === entryId);
-    if (!target) return false;
-
-    target.status = 'settled';
-    target.settledDate = new Date().toISOString().split('T')[0];
-    localStorage.setItem(STORAGE_KHATA_KEY, JSON.stringify(list, null, 2));
-
-    this.recordLog({
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      backend: this.currentBackend,
-      method: 'PUT',
-      endpoint: `/api/khata/${entryId}/settle`,
-      status: 200,
-      statusText: 'OK',
-      durationMs: 18,
-      responsePayload: { message: `Khata credit of ₹${target.amount} settled for ${target.customerName}` },
       headers: this.getHeaders(this.currentBackend)
     });
 
